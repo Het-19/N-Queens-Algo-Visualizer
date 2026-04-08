@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>N-Queens Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0f;
+    --surface: #16161a;
+    --surface2: #1e1e24;
+    --border: rgba(255,255,255,0.08);
+    --border-bright: rgba(255,255,255,0.18);
+    --accent: #a78bfa;
+    --accent2: #34d399;
+    --accent3: #f87171;
+    --accent4: #fbbf24;
+    --text: #f1f0ff;
+    --text-muted: #888899;
+    --cell-light: #1c1c24;
+    --cell-dark: #141418;
+    --queen-color: #a78bfa;
+    --try-color: #fbbf24;
+    --danger-color: rgba(248, 113, 113, 0.18);
+    --safe-glow: rgba(167, 139, 250, 0.3);
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem 4rem;
+    overflow-x: hidden;
+  }
+
+  /* BG grid pattern */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(167,139,250,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(167,139,250,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 820px;
+  }
+
+  /* HEADER */
+  header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+    opacity: 0.9;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #fff 30%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+  }
+
+  .subtitle {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  /* CONTROLS ROW */
+  .controls-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .n-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 16px;
+  }
+
+  .n-selector label {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .n-selector select {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .n-selector select option { background: #1a1a2e; }
+
+  .speed-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 16px;
+  }
+
+  .speed-selector label {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .speed-selector input[type=range] {
+    -webkit-appearance: none;
+    width: 80px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--border-bright);
+    outline: none;
+  }
+  .speed-selector input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+
+  .btn {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 24px;
+    cursor: pointer;
+    transition: transform 0.15s, opacity 0.15s;
+  }
+  .btn:active { transform: scale(0.96); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #0d0d0f;
+  }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .btn-ghost {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .btn-ghost:hover { border-color: var(--border-bright); color: var(--text); }
+
+  /* MAIN LAYOUT */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 260px;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  @media (max-width: 680px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+
+  /* BOARD WRAPPER */
+  .board-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  /* Row labels */
+  .board-outer {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .row-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .row-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .col-labels {
+    display: flex;
+    margin-left: 28px;
+    margin-bottom: 2px;
+  }
+
+  .col-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* BOARD */
+  #board {
+    display: grid;
+    border: 1px solid var(--border-bright);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 60px rgba(167,139,250,0.08), 0 0 0 1px var(--border);
+  }
+
+  .cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    line-height: 1;
+    transition: background 0.25s ease;
+    cursor: default;
+    user-select: none;
+  }
+
+  /* Checkerboard */
+  .cell.light { background: #1c1c26; }
+  .cell.dark  { background: #141420; }
+
+  /* States */
+  .cell.state-try {
+    background: rgba(251, 191, 36, 0.22) !important;
+    animation: pulse-try 0.5s ease;
+  }
+
+  .cell.state-queen {
+    background: rgba(167, 139, 250, 0.22) !important;
+  }
+
+  .cell.state-danger {
+    background: rgba(248, 113, 113, 0.10) !important;
+  }
+
+  .cell.state-safe {
+    background: rgba(52, 211, 153, 0.07) !important;
+  }
+
+  @keyframes pulse-try {
+    0%   { transform: scale(1);    }
+    40%  { transform: scale(1.08); }
+    100% { transform: scale(1);    }
+  }
+
+  /* Queen piece */
+  .queen-icon {
+    position: relative;
+    z-index: 2;
+    font-size: 1em;
+    filter: drop-shadow(0 0 8px var(--queen-color));
+    animation: queen-appear 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  @keyframes queen-appear {
+    from { transform: scale(0) rotate(-20deg); opacity: 0; }
+    to   { transform: scale(1) rotate(0deg);   opacity: 1; }
+  }
+
+  /* Danger dot */
+  .danger-dot {
+    position: absolute;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: rgba(248,113,113,0.5);
+    animation: dot-in 0.3s ease;
+  }
+
+  @keyframes dot-in {
+    from { transform: scale(0); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+
+  /* TRY highlight ring */
+  .try-ring {
+    position: absolute;
+    inset: 4px;
+    border: 2px solid rgba(251,191,36,0.7);
+    border-radius: 6px;
+    animation: ring-in 0.25s ease;
+  }
+
+  @keyframes ring-in {
+    from { opacity: 0; transform: scale(0.7); }
+    to   { opacity: 1; transform: scale(1);   }
+  }
+
+  /* SIDE PANEL */
+  .side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .panel-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem;
+  }
+
+  .panel-title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+  }
+
+  /* Stats */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .stat-item {
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .stat-value {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .stat-value.green { color: var(--accent2); }
+  .stat-value.red   { color: var(--accent3); }
+  .stat-value.amber { color: var(--accent4); }
+
+  /* Log */
+  .log-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 260px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .log-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    opacity: 0.7;
+    transition: opacity 0.3s;
+  }
+
+  .log-item.active { opacity: 1; background: var(--surface2); }
+
+  .log-badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+
+  .badge-try    { background: rgba(251,191,36,0.2);  color: var(--accent4); }
+  .badge-place  { background: rgba(167,139,250,0.2); color: var(--accent);  }
+  .badge-remove { background: rgba(248,113,113,0.2); color: var(--accent3); }
+
+  .log-text { color: var(--text-muted); }
+  .log-item.active .log-text { color: var(--text); }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .legend-swatch {
+    width: 14px; height: 14px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  /* Progress bar */
+  .progress-bar-wrap {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 1rem;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+
+  /* Status bar */
+  .status-bar {
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    margin-top: 0.5rem;
+    height: 18px;
+  }
+
+  /* Solution count badge */
+  .solution-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(52, 211, 153, 0.12);
+    border: 1px solid rgba(52, 211, 153, 0.25);
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent2);
+    margin-top: 1rem;
+  }
+
+  /* ── Solution celebration ── */
+
+  /* Board border ripple */
+  @keyframes board-celebrate {
+    0%   { box-shadow: 0 0 0px  rgba(52,211,153,0.0),  0 0 0 1px var(--border); }
+    20%  { box-shadow: 0 0 40px rgba(52,211,153,0.55), 0 0 0 2px rgba(52,211,153,0.6); }
+    60%  { box-shadow: 0 0 80px rgba(52,211,153,0.3),  0 0 0 2px rgba(52,211,153,0.4); }
+    100% { box-shadow: 0 0 60px rgba(167,139,250,0.08),0 0 0 1px var(--border); }
+  }
+
+  .board-celebrating {
+    animation: board-celebrate 1.6s ease forwards !important;
+  }
+
+  /* Queen cells shimmer gold when solution found */
+  @keyframes queen-celebrate {
+    0%   { background: rgba(167,139,250,0.22); filter: brightness(1);   }
+    30%  { background: rgba(52,211,153,0.40);  filter: brightness(1.4); }
+    65%  { background: rgba(52,211,153,0.28);  filter: brightness(1.2); }
+    100% { background: rgba(167,139,250,0.22); filter: brightness(1);   }
+  }
+
+  .cell.state-solution {
+    animation: queen-celebrate 1.5s ease forwards !important;
+  }
+
+  /* Toast banner */
+  #solutionToast {
+    position: fixed;
+    top: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(-120px);
+    background: linear-gradient(135deg, #052e1a 0%, #0a1f0e 100%);
+    border: 1px solid rgba(52,211,153,0.45);
+    border-radius: 16px;
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    z-index: 9999;
+    transition: transform 0.45s cubic-bezier(0.34,1.56,0.64,1);
+    pointer-events: none;
+    white-space: nowrap;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 30px rgba(52,211,153,0.15);
+  }
+
+  #solutionToast.show {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .toast-icon {
+    font-size: 26px;
+    animation: icon-bounce 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.2s both;
+  }
+
+  @keyframes icon-bounce {
+    from { transform: scale(0) rotate(-30deg); }
+    to   { transform: scale(1) rotate(0deg);   }
+  }
+
+  .toast-body {}
+
+  .toast-title {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 800;
+    color: #34d399;
+    line-height: 1.2;
+  }
+
+  .toast-sub {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: rgba(52,211,153,0.65);
+    margin-top: 2px;
+  }
+
+  /* Particle burst */
+  .particle {
+    position: fixed;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    animation: particle-fly 1.2s ease-out forwards;
+  }
+
+  @keyframes particle-fly {
+    0%   { transform: translate(0,0) scale(1);   opacity: 1; }
+    100% { transform: var(--tx) scale(0);         opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <header>
+    <div class="eyebrow">Algorithm Visualizer</div>
+    <h1>N-Queens</h1>
+    <p class="subtitle">Backtracking · Step-by-step · Interactive</p>
+  </header>
+
+  <div class="controls-row">
+    <div class="n-selector">
+      <label>N =</label>
+      <select id="nSelect" onchange="onNChange()">
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+      </select>
+    </div>
+
+    <div class="speed-selector">
+      <label>Speed</label>
+      <input type="range" id="speedSlider" min="1" max="5" value="3" step="1">
+      <span id="speedLabel" style="font-family:var(--font-mono);font-size:12px;color:var(--accent);min-width:20px;">3x</span>
+    </div>
+
+    <button class="btn btn-primary" id="startBtn" onclick="startViz()">▶ Start</button>
+    <button class="btn btn-ghost" id="pauseBtn" onclick="togglePause()" disabled>⏸ Pause</button>
+    <button class="btn btn-ghost" id="resetBtn" onclick="resetViz()">↺ Reset</button>
+  </div>
+
+  <div class="main-grid">
+
+    <!-- BOARD AREA -->
+    <div class="board-wrapper" id="boardWrapper">
+      <div class="col-labels" id="colLabels"></div>
+      <div class="board-outer">
+        <div class="row-labels" id="rowLabels"></div>
+        <div id="board"></div>
+      </div>
+      <div class="progress-bar-wrap" style="width:100%;max-width:480px;">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+      <div class="status-bar" id="statusBar">Press Start to begin</div>
+    </div>
+
+    <!-- SIDE PANEL -->
+    <div class="side-panel">
+
+      <div class="panel-card">
+        <div class="panel-title">Statistics</div>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-label">Step</div>
+            <div class="stat-value" id="statStep">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Total</div>
+            <div class="stat-value" id="statTotal">—</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Placed</div>
+            <div class="stat-value green" id="statPlaced">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Solutions</div>
+            <div class="stat-value amber" id="statSolutions">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-title">Step Log</div>
+        <div class="log-list" id="logList"></div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-title">Legend</div>
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-swatch" style="background:rgba(251,191,36,0.3);border:1px solid rgba(251,191,36,0.5);"></div>
+            Trying position
+          </div>
+          <div class="legend-item">
+            <div class="legend-swatch" style="background:rgba(167,139,250,0.3);border:1px solid rgba(167,139,250,0.5);"></div>
+            Queen placed
+          </div>
+          <div class="legend-item">
+            <div class="legend-swatch" style="background:rgba(248,113,113,0.18);border:1px solid rgba(248,113,113,0.3);"></div>
+            Under attack
+          </div>
+          <div class="legend-item">
+            <div class="legend-swatch" style="background:rgba(52,211,153,0.12);border:1px solid rgba(52,211,153,0.3);"></div>
+            Safe position
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Solution toast -->
+<div id="solutionToast">
+  <div class="toast-icon">♛</div>
+  <div class="toast-body">
+    <div class="toast-title" id="toastTitle">Solution Found!</div>
+    <div class="toast-sub" id="toastSub">Continuing search…</div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// N-QUEENS SOLVER (mirrors nqueen.cpp logic exactly)
+// ============================================================
+function isQueenSafe(board, n, row, col) {
+  for (let j = 0; j < n; j++)
+    if (board[row][j] === 'Q') return false;
+  for (let i = 0; i < n; i++)
+    if (board[i][col] === 'Q') return false;
+  for (let i = row, j = col; i >= 0 && j >= 0; i--, j--)
+    if (board[i][j] === 'Q') return false;
+  for (let i = row, j = col; i >= 0 && j < n; i--, j++)
+    if (board[i][j] === 'Q') return false;
+  return true;
+}
+
+function solve(n) {
+  const steps = [];
+  let solutions = 0;
+  const board = Array.from({length: n}, () => Array(n).fill('.'));
+
+  function getNQueens(row) {
+    if (row === n) { solutions++; return; }
+    for (let col = 0; col < n; col++) {
+      steps.push({action:'TRY', row, col});
+      if (isQueenSafe(board, n, row, col)) {
+        steps.push({action:'PLACE', row, col});
+        board[row][col] = 'Q';
+        getNQueens(row + 1);
+        steps.push({action:'REMOVE', row, col});
+        board[row][col] = '.';
+      }
+    }
+  }
+
+  getNQueens(0);
+  return { steps, solutions };
+}
+
+// ============================================================
+// STATE
+// ============================================================
+let n = 4;
+let steps = [];
+let totalSolutions = 0;
+let stepIndex = 0;
+let queenBoard = [];
+let intervalId = null;
+let running = false;
+let paused = false;
+let logCount = 0;
+
+const SPEEDS = [1200, 700, 400, 200, 80]; // ms per step
+
+function getSpeed() {
+  return SPEEDS[parseInt(document.getElementById('speedSlider').value) - 1];
+}
+
+// ============================================================
+// PAUSE / RESUME
+// ============================================================
+function togglePause() {
+  if (!running && !paused) return;
+  const pauseBtn = document.getElementById('pauseBtn');
+  const startBtn = document.getElementById('startBtn');
+
+  if (!paused) {
+    // Pause
+    paused = true;
+    running = false;
+    clearTimeout(intervalId);
+    pauseBtn.textContent = '▶ Resume';
+    pauseBtn.style.background = 'var(--accent2)';
+    pauseBtn.style.color = '#0d0d0f';
+    pauseBtn.style.border = 'none';
+    startBtn.disabled = true;
+    document.getElementById('statusBar').textContent = '⏸ Paused — press Resume to continue';
+  } else {
+    // Resume
+    paused = false;
+    running = true;
+    pauseBtn.textContent = '⏸ Pause';
+    pauseBtn.style.background = '';
+    pauseBtn.style.color = '';
+    pauseBtn.style.border = '';
+    startBtn.disabled = true;
+    document.getElementById('statusBar').textContent = 'Resuming…';
+    tick();
+  }
+}
+
+// ============================================================
+// BUILD BOARD UI
+// ============================================================
+function buildBoard() {
+  const board = document.getElementById('board');
+  const rowLabels = document.getElementById('rowLabels');
+  const colLabels = document.getElementById('colLabels');
+
+  const cellSize = Math.min(Math.floor(Math.min(window.innerWidth - 300, 480) / n), 80);
+
+  board.style.gridTemplateColumns = `repeat(${n}, ${cellSize}px)`;
+  board.innerHTML = '';
+  rowLabels.innerHTML = '';
+  colLabels.innerHTML = '';
+
+  // Col labels
+  for (let c = 0; c < n; c++) {
+    const lbl = document.createElement('div');
+    lbl.className = 'col-label';
+    lbl.style.width = cellSize + 'px';
+    lbl.textContent = String.fromCharCode(65 + c);
+    colLabels.appendChild(lbl);
+  }
+
+  // Row labels + cells
+  for (let r = 0; r < n; r++) {
+    const lbl = document.createElement('div');
+    lbl.className = 'row-label';
+    lbl.style.height = cellSize + 'px';
+    lbl.textContent = r + 1;
+    rowLabels.appendChild(lbl);
+
+    for (let c = 0; c < n; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell ' + ((r + c) % 2 === 0 ? 'light' : 'dark');
+      cell.style.width = cellSize + 'px';
+      cell.style.height = cellSize + 'px';
+      cell.style.fontSize = Math.floor(cellSize * 0.48) + 'px';
+      cell.id = `cell-${r}-${c}`;
+      board.appendChild(cell);
+    }
+  }
+
+  queenBoard = Array.from({length: n}, () => Array(n).fill(0));
+}
+
+// ============================================================
+// DANGER CHECK
+// ============================================================
+function isDanger(r, c) {
+  for (let i = 0; i < n; i++)
+    for (let j = 0; j < n; j++)
+      if (queenBoard[i][j] === 1) {
+        if (i === r || j === c) return true;
+        if (Math.abs(i - r) === Math.abs(j - c)) return true;
+      }
+  return false;
+}
+
+// ============================================================
+// REDRAW
+// ============================================================
+function redrawBoard(highlightRow = -1, highlightCol = -1, highlightType = '') {
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      const cell = document.getElementById(`cell-${r}-${c}`);
+      const base = (r + c) % 2 === 0 ? 'light' : 'dark';
+      cell.className = 'cell ' + base;
+      cell.innerHTML = '';
+
+      if (queenBoard[r][c] === 1) {
+        cell.classList.add('state-queen');
+        const q = document.createElement('span');
+        q.className = 'queen-icon';
+        q.textContent = '♛';
+        cell.appendChild(q);
+      } else if (r === highlightRow && c === highlightCol && highlightType === 'TRY') {
+        cell.classList.add('state-try');
+        const ring = document.createElement('div');
+        ring.className = 'try-ring';
+        cell.appendChild(ring);
+      } else if (isDanger(r, c)) {
+        cell.classList.add('state-danger');
+        const dot = document.createElement('div');
+        dot.className = 'danger-dot';
+        cell.appendChild(dot);
+      } else {
+        cell.classList.add('state-safe');
+      }
+    }
+  }
+}
+
+// ============================================================
+// LOG
+// ============================================================
+function addLog(step) {
+  const list = document.getElementById('logList');
+  logCount++;
+  if (logCount > 80) {
+    list.removeChild(list.firstChild);
+  }
+
+  const item = document.createElement('div');
+  item.className = 'log-item active';
+  item.id = 'log-' + logCount;
+
+  const prev = list.querySelector('.log-item.active');
+  if (prev) prev.classList.remove('active');
+
+  const badge = document.createElement('span');
+  badge.className = 'log-badge badge-' + step.action.toLowerCase();
+  badge.textContent = step.action;
+
+  const txt = document.createElement('span');
+  txt.className = 'log-text';
+  txt.textContent = `row ${step.row + 1}, col ${String.fromCharCode(65 + step.col)}`;
+
+  item.appendChild(badge);
+  item.appendChild(txt);
+  list.appendChild(item);
+  list.scrollTop = list.scrollHeight;
+}
+
+// ============================================================
+// CELEBRATION
+// ============================================================
+let solutionCount = 0;
+
+function flashQueenCells() {
+  for (let r = 0; r < n; r++)
+    for (let c = 0; c < n; c++)
+      if (queenBoard[r][c] === 1) {
+        const cell = document.getElementById(`cell-${r}-${c}`);
+        cell.classList.remove('state-solution');
+        void cell.offsetWidth; // reflow to restart animation
+        cell.classList.add('state-solution');
+      }
+}
+
+function burstParticles() {
+  const board = document.getElementById('board');
+  const rect = board.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top  + rect.height / 2;
+  const colors = ['#34d399','#a78bfa','#fbbf24','#f87171','#60a5fa','#f0abfc'];
+
+  for (let i = 0; i < 22; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const angle = (i / 22) * 2 * Math.PI + (Math.random() - 0.5) * 0.4;
+    const dist  = 80 + Math.random() * 110;
+    const tx = Math.cos(angle) * dist;
+    const ty = Math.sin(angle) * dist - 30;
+    p.style.left  = cx + 'px';
+    p.style.top   = cy + 'px';
+    p.style.background = colors[i % colors.length];
+    p.style.setProperty('--tx', `translate(${tx}px, ${ty}px)`);
+    p.style.animationDelay = (Math.random() * 0.15) + 's';
+    p.style.width = p.style.height = (4 + Math.random() * 5) + 'px';
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1400);
+  }
+}
+
+function showToast(num, total) {
+  const toast = document.getElementById('solutionToast');
+  document.getElementById('toastTitle').textContent = `Solution #${num} found!`;
+  document.getElementById('toastSub').textContent =
+    num < total ? `Continuing backtracking search…` : `All ${total} solution${total>1?'s':''} found!`;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 1800);
+}
+
+function celebrateSolution(num, total, onDone) {
+  // Board glow
+  const board = document.getElementById('board');
+  board.classList.add('board-celebrating');
+  board.addEventListener('animationend', () => board.classList.remove('board-celebrating'), {once:true});
+
+  flashQueenCells();
+  burstParticles();
+  showToast(num, total);
+
+  // Pause for audience to see the solution, then resume
+  const pauseMs = Math.max(getSpeed() * 2, 1400);
+  setTimeout(onDone, pauseMs);
+}
+
+// ============================================================
+// APPLY STEP
+// ============================================================
+function applyStep(step) {
+  addLog(step);
+
+  if (step.action === 'TRY') {
+    redrawBoard(step.row, step.col, 'TRY');
+    document.getElementById('statusBar').textContent =
+      `Trying row ${step.row + 1}, col ${String.fromCharCode(65 + step.col)}…`;
+  }
+
+  if (step.action === 'PLACE') {
+    queenBoard[step.row][step.col] = 1;
+    redrawBoard();
+    const placed = queenBoard.flat().filter(v => v === 1).length;
+    document.getElementById('statPlaced').textContent = placed;
+    document.getElementById('statusBar').textContent =
+      `♛ Queen placed at row ${step.row + 1}, col ${String.fromCharCode(65 + step.col)}`;
+
+    if (placed === n) {
+      solutionCount++;
+      document.getElementById('statSolutions').textContent = solutionCount;
+      document.getElementById('statusBar').textContent = `✓ Solution #${solutionCount} — Watch it!`;
+      return true; // signal: solution found, pause needed
+    }
+  }
+
+  if (step.action === 'REMOVE') {
+    queenBoard[step.row][step.col] = 0;
+    redrawBoard();
+    const placed = queenBoard.flat().filter(v => v === 1).length;
+    document.getElementById('statPlaced').textContent = placed;
+    document.getElementById('statusBar').textContent =
+      `↩ Backtracking from row ${step.row + 1}…`;
+  }
+
+  document.getElementById('statStep').textContent = stepIndex;
+  const pct = Math.round((stepIndex / steps.length) * 100);
+  document.getElementById('progressBar').style.width = pct + '%';
+  return false;
+}
+
+// ============================================================
+// CONTROLS
+// ============================================================
+function startViz() {
+  if (running || paused) return;
+  running = true;
+  paused = false;
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('pauseBtn').disabled = false;
+
+  tick();
+}
+
+function tick() {
+    if (!running) return;
+
+    if (stepIndex >= steps.length) {
+      running = false;
+      paused = false;
+      document.getElementById('statusBar').textContent =
+        `✓ Done — ${solutionCount} solution${solutionCount !== 1 ? 's' : ''} found`;
+      document.getElementById('progressBar').style.width = '100%';
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('startBtn').textContent = '▶ Replay';
+      document.getElementById('pauseBtn').disabled = true;
+      document.getElementById('pauseBtn').textContent = '⏸ Pause';
+      document.getElementById('pauseBtn').style.background = '';
+      document.getElementById('pauseBtn').style.color = '';
+      document.getElementById('pauseBtn').style.border = '';
+      stepIndex = 0;
+      queenBoard = Array.from({length: n}, () => Array(n).fill(0));
+      solutionCount = 0;
+      return;
+    }
+
+    const isSolution = applyStep(steps[stepIndex]);
+    stepIndex++;
+
+    document.getElementById('statStep').textContent = stepIndex;
+    const pct = Math.round((stepIndex / steps.length) * 100);
+    document.getElementById('progressBar').style.width = pct + '%';
+
+    if (isSolution) {
+      celebrateSolution(solutionCount, totalSolutions, () => {
+        if (running) intervalId = setTimeout(tick, getSpeed());
+      });
+    } else {
+      intervalId = setTimeout(tick, getSpeed());
+    }
+}
+
+function resetViz() {
+  running = false;
+  paused = false;
+  if (intervalId) clearTimeout(intervalId);
+  stepIndex = 0;
+  solutionCount = 0;
+  queenBoard = Array.from({length: n}, () => Array(n).fill(0));
+  document.getElementById('logList').innerHTML = '';
+  document.getElementById('statStep').textContent = '0';
+  document.getElementById('statPlaced').textContent = '0';
+  document.getElementById('statSolutions').textContent = '0';
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('statusBar').textContent = 'Press Start to begin';
+  document.getElementById('startBtn').disabled = false;
+  document.getElementById('startBtn').textContent = '▶ Start';
+  const pauseBtn = document.getElementById('pauseBtn');
+  pauseBtn.disabled = true;
+  pauseBtn.textContent = '⏸ Pause';
+  pauseBtn.style.background = '';
+  pauseBtn.style.color = '';
+  pauseBtn.style.border = '';
+  logCount = 0;
+  redrawBoard();
+}
+
+function onNChange() {
+  if (running || paused) { running = false; paused = false; clearTimeout(intervalId); }
+  n = parseInt(document.getElementById('nSelect').value);
+  const result = solve(n);
+  steps = result.steps;
+  totalSolutions = result.solutions;
+  document.getElementById('statTotal').textContent = steps.length;
+  buildBoard();
+  resetViz();
+}
+
+document.getElementById('speedSlider').addEventListener('input', function() {
+  document.getElementById('speedLabel').textContent = this.value + 'x';
+  if (running) {
+    running = false;
+    clearTimeout(intervalId);
+    startViz();
+  }
+  // if paused, new speed takes effect on resume automatically
+});
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('load', () => {
+  n = 4;
+  const result = solve(n);
+  steps = result.steps;
+  totalSolutions = result.solutions;
+  document.getElementById('statTotal').textContent = steps.length;
+  buildBoard();
+  redrawBoard();
+});
+</script>
+
+</body>
+</html>
