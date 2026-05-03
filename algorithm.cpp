@@ -1,78 +1,100 @@
-    // Marks or unmarks all cells attacked by a queen placed at (row, col).
-    // delta = +1 when placing a queen, -1 when removing (backtracking).
-    void updateBoard(int n, int row, int col, vector<vector<int>>& board, int delta) {
+#include <string>
+#include <utility>
+#include <vector>
+using namespace std;
 
-        // Mark / unmark the entire row
-        for (int j = 0; j < n; j++)
-            board[row][j] += delta;
 
-        // Mark / unmark the entire column
-        for (int i = 0; i < n; i++)
-            board[i][col] += delta;
-
-        // Mark / unmark upper-left diagonal
-        for (int i = row, j = col; i >= 0 && j >= 0; i--, j--)
-            board[i][j] += delta;
-
-        // Mark / unmark upper-right diagonal
-        for (int i = row, j = col; i >= 0 && j < n; i--, j++)
-            board[i][j] += delta;
-
-        // Mark / unmark lower-left diagonal
-        for (int i = row, j = col; i < n && j >= 0; i++, j--)
-            board[i][j] += delta;
-
-        // Mark / unmark lower-right diagonal
-        for (int i = row, j = col; i < n && j < n; i++, j++)
-            board[i][j] += delta;
-
-        // The queen's own cell is counted 3 times (row + col + two diagonals cross here).
-        // Correct the over-count so that the cell itself reflects exactly the net attacks.
-        // After a +1 pass it becomes +3 (row, col, diag all hit it); we want +1 → adjust by -2*delta.
-        board[row][col] += -2 * delta;
+// Reverts every cell this queen actually modified (queen square + attacks written).
+void revertQueenMarks(vector<vector<int>>& board,
+                      const vector<pair<int, int>>& modifiedCells) {
+    for (const auto& cell : modifiedCells) {
+        board[cell.first][cell.second] = 0;
     }
+}
 
-    // Converts the int matrix (tracks attack counts) to a vector<string> board
-    // by checking which cell in each row holds the queen (value == 0 after removal isn't enough;
-    // we track queen positions via a separate colPos array passed from the solver).
-    void getNQueens(int n, int row, vector<vector<int>>& board,
-                    vector<int>& queenCol, vector<vector<string>>& ans) {
 
-        if (row == n) {
-            // Build the string board from the recorded queen column positions
-            vector<string> solution(n, string(n, '.'));
-            for (int i = 0; i < n; i++)
-                solution[i][queenCol[i]] = 'Q';
-            ans.push_back(solution);
+// Marks queen at (row,col) as 100*queenNum; marks attacked empties as queenNum only if still 0.
+// Records each cell whose value was changed so backtracking touches only those entries.
+void placeQueenMarkAttacks(int n, int row, int col, int queenNum,
+                           vector<vector<int>>& board,
+                           vector<pair<int, int>>& outModifiedCells) {
+    outModifiedCells.clear();
+
+    board[row][col] = 100 * queenNum;
+    outModifiedCells.emplace_back(row, col);
+    
+    // Lambda function to consider attacking a cell.
+    auto considerAttackCell = [&](int r, int c) {
+        // Skip the queen's own cell as it is already marked above.
+        if (r == row && c == col) {
             return;
         }
+        // If the cell is empty, mark it with the queen number.
+        if (board[r][c] == 0) {
+            board[r][c] = queenNum;
+            outModifiedCells.emplace_back(r, c);
+        }
+    };
 
-        for (int col = 0; col < n; col++) {
+    // Consider attacking all cells in the same row, column, and diagonals.
+    for (int j = 0; j < n; ++j) {
+        considerAttackCell(row, j);
+    }
+    for (int i = 0; i < n; ++i) {
+        considerAttackCell(i, col);
+    }
+    for (int i = row - 1, j = col - 1; i >= 0 && j >= 0; --i, --j) {
+        considerAttackCell(i, j);
+    }
+    for (int i = row - 1, j = col + 1; i >= 0 && j < n; --i, ++j) {
+        considerAttackCell(i, j);
+    }
+    for (int i = row + 1, j = col - 1; i < n && j >= 0; ++i, --j) {
+        considerAttackCell(i, j);
+    }
+    for (int i = row + 1, j = col + 1; i < n && j < n; ++i, ++j) {
+        considerAttackCell(i, j);
+    }
+}
 
-            // A cell is safe only if no queen attacks it (value == 0)
-            if (board[row][col] == 0) {
+void getNQueens(int n, int row, vector<vector<int>>& board, vector<int>& queenCol,
+                vector<vector<string>>& ans,
+                vector<vector<pair<int, int>>>& attackedCellsPerQueen) {
+    if (row == n) {
+        vector<string> solution(n, string(n, '.'));
+        for (int i = 0; i < n; ++i) {
+            solution[i][queenCol[i]] = 'Q';
+        }
+        ans.push_back(solution);
+        return;
+    }
 
-                // Place queen: mark all attacked cells with +1
-                updateBoard(n, row, col, board, +1);
-                queenCol[row] = col;
+    const int queenNum = row + 1;
 
-                getNQueens(n, row + 1, board, queenCol, ans);
+    for (int col = 0; col < n; ++col) {
+        // Safe iff unattacked empty cell (no overlap with queen markers 100*k).
+        if (board[row][col] == 0) {
+            placeQueenMarkAttacks(n, row, col, queenNum, board, attackedCellsPerQueen[row]);
+            queenCol[row] = col;
 
-                // Remove queen: unmark all attacked cells with -1 (backtrack)
-                updateBoard(n, row, col, board, -1);
-            }
-            // Cells with value > 0 are already under attack — skip them entirely
+            getNQueens(n, row + 1, board, queenCol, ans, attackedCellsPerQueen);
+
+            revertQueenMarks(board, attackedCellsPerQueen[row]);
         }
     }
+}
 
-    vector<vector<string>> solveNQueens(int n) {
-        // n x n integer matrix, 0 = safe, >0 = under attack
-        vector<vector<int>> board(n, vector<int>(n, 0));
 
-        // Stores the column index of the queen placed in each row
-        vector<int> queenCol(n, -1);
+vector<vector<string>> solveNQueens(int n) {
+    vector<vector<int>> board(n, vector<int>(n, 0));
+    vector<int> queenCol(n, -1);
+    vector<vector<string>> ans;
+    vector<vector<pair<int, int>>> attackedCellsPerQueen(n);
 
-        vector<vector<string>> ans;
-        getNQueens(n, 0, board, queenCol, ans);
-        return ans;
+    for (auto& bucket : attackedCellsPerQueen) {
+        bucket.reserve(static_cast<size_t>(6 * n));
     }
+
+    getNQueens(n, 0, board, queenCol, ans, attackedCellsPerQueen);
+    return ans;
+}
