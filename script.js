@@ -1,39 +1,85 @@
 // ============================================================
 // N-Queens Visualizer — script.js
-// Mirrors nqueen.cpp backtracking logic exactly in JS.
-// Steps array is generated client-side, matching C++ output.
+// Solver mirrors algorithm.cpp: int board, attack marks, incremental revert.
+// TRY/PLACE/REMOVE steps keep the same visualization contract as before.
 // ============================================================
 
-// ============================================================
-// SOLVER (same logic as nqueen.cpp)
-// ============================================================
-function isQueenSafe(board, n, row, col) {
-  for (let j = 0; j < n; j++)
-    if (board[row][j] === 'Q') return false;
-  for (let i = 0; i < n; i++)
-    if (board[i][col] === 'Q') return false;
-  for (let i = row, j = col; i >= 0 && j >= 0; i--, j--)
-    if (board[i][j] === 'Q') return false;
-  for (let i = row, j = col; i >= 0 && j < n; i--, j++)
-    if (board[i][j] === 'Q') return false;
-  return true;
+// ------------------------------------------------------------
+// Maps to algorithm.cpp: revertQueenMarks
+// Restores only cells this queen actually changed (O(k) per undo).
+// ------------------------------------------------------------
+function revertQueenMarks(board, modifiedCells) {
+  for (let i = 0; i < modifiedCells.length; i++) {
+    const cell = modifiedCells[i];
+    board[cell[0]][cell[1]] = 0;
+  }
+}
+
+// ------------------------------------------------------------
+// Maps to algorithm.cpp: placeQueenMarkAttacks
+// Queen cell = 100 * queenNum; empty attacked cells = queenNum if still 0.
+// Overlapping attacks are not overwritten (same as C++ considerAttackCell).
+// ------------------------------------------------------------
+function placeQueenMarkAttacks(n, row, col, queenNum, board, outModifiedCells) {
+  outModifiedCells.length = 0;
+
+  board[row][col] = 100 * queenNum;
+  outModifiedCells.push([row, col]);
+
+  function considerAttackCell(r, c) {
+    if (r === row && c === col) return;
+    if (board[r][c] === 0) {
+      board[r][c] = queenNum;
+      outModifiedCells.push([r, c]);
+    }
+  }
+
+  for (let j = 0; j < n; j++) considerAttackCell(row, j);
+  for (let i = 0; i < n; i++) considerAttackCell(i, col);
+  for (let i = row - 1, j = col - 1; i >= 0 && j >= 0; i--, j--) considerAttackCell(i, j);
+  for (let i = row - 1, j = col + 1; i >= 0 && j < n; i--, j++) considerAttackCell(i, j);
+  for (let i = row + 1, j = col - 1; i < n && j >= 0; i++, j--) considerAttackCell(i, j);
+  for (let i = row + 1, j = col + 1; i < n && j < n; i++, j++) considerAttackCell(i, j);
 }
 
 function solve(n) {
   const steps = [];
   let solutions = 0;
-  const board = Array.from({length: n}, () => Array(n).fill('.'));
+  // algorithm.cpp: vector<vector<int>> board(n, vector<int>(n, 0));
+  const board = Array.from({ length: n }, () => Array(n).fill(0));
+  // algorithm.cpp: vector<int> queenCol(n, -1);
+  const queenCol = Array(n).fill(-1);
+  // algorithm.cpp: vector<vector<pair<int,int>>> attackedCellsPerQueen(n);
+  const attackedCellsPerQueen = Array.from({ length: n }, () => []);
 
   function getNQueens(row) {
-    if (row === n) { solutions++; return; }
+    if (row === n) {
+      solutions++;
+      return;
+    }
+
+    const queenNum = row + 1; // algorithm.cpp: const int queenNum = row + 1;
+
     for (let col = 0; col < n; col++) {
-      steps.push({action: 'TRY', row, col});
-      if (isQueenSafe(board, n, row, col)) {
-        steps.push({action: 'PLACE', row, col});
-        board[row][col] = 'Q';
+      // One TRY per column keeps the same animation/log pattern as the old JS loop.
+      steps.push({ action: 'TRY', row, col });
+      // algorithm.cpp: safe iff unattacked empty (board[row][col] == 0).
+      if (board[row][col] === 0) {
+        placeQueenMarkAttacks(
+          n,
+          row,
+          col,
+          queenNum,
+          board,
+          attackedCellsPerQueen[row]
+        );
+        queenCol[row] = col;
+
+        steps.push({ action: 'PLACE', row, col });
         getNQueens(row + 1);
-        steps.push({action: 'REMOVE', row, col});
-        board[row][col] = '.';
+        steps.push({ action: 'REMOVE', row, col });
+
+        revertQueenMarks(board, attackedCellsPerQueen[row]);
       }
     }
   }
